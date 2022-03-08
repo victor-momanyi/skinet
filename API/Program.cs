@@ -1,6 +1,7 @@
-using Core.Interfaces;
+using API.Extensions;
+using API.Helpers;
+using API.Middleware;
 using Infrastructure.Data;
-using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -10,12 +11,19 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 builder.Services.AddTransient<DataSeeder>();
 builder.Services.AddDbContext<StoreContext>(options => options.UseSqlServer(connectionString));
 
-
 builder.Services.AddControllers();
-builder.Services.AddScoped<IProductRepository, ProductRepository>();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+builder.Services.AddApplicationServices();
+builder.Services.AddSwaggerDocumentation();
+builder.Services.AddAutoMapper(typeof(MappingProfiles));
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+// builder.Services.AddCors(opt =>
+// {
+//     opt.AddPolicy("CorsPolicy", policy =>
+//     {
+//         policy.AllowAnyHeader().AllowAnyMethod().WithOrigins("https://localhost:4200");
+//     });
+// });
+
 
 var app = builder.Build();
 
@@ -32,14 +40,17 @@ void SeedData(IHost app)
     }
 }
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "API v1"));
-}
+app.UseMiddleware<ExceptionMiddleware>();
+
+app.UseSwaggerDocumentation();
+
+app.UseStatusCodePagesWithReExecute("/errors/{0}");
 
 app.UseHttpsRedirection();
+
+app.UseStaticFiles();
+
+//app.UseCors("CorsPolicy");
 
 app.UseAuthorization();
 
